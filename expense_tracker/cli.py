@@ -138,7 +138,18 @@ def edit_expense_flow(stdscr, tracker: Tracker, expense_id: int):
     amount = parse_amount(stdscr, 0, initial=str(expense.amount))
     when = parse_date(stdscr, 2, initial=expense.date)
     note = prompt_text(stdscr, 4, "Note: ", initial=expense.note)
-    tracker.edit_expense(expense_id, amount=amount, note=note, when=when)
+
+    categories = tracker.list_categories()
+    current_index = categories.index(expense.category) if expense.category in categories else 0
+    choice = select_from_list(
+        stdscr,
+        categories,
+        f"Change category (currently: {expense.category}). Enter to confirm, Esc to keep current:",
+        start=current_index,
+    )
+    category = categories[choice] if choice is not None else None
+
+    tracker.edit_expense(expense_id, amount=amount, category=category, note=note, when=when)
 
 
 def view_edit_entries_flow(stdscr, tracker: Tracker):
