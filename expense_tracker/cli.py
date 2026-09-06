@@ -175,15 +175,29 @@ def edit_expense_flow(stdscr, tracker: Tracker, expense_id: int):
 
 
 def view_edit_entries_flow(stdscr, tracker: Tracker):
+    sort_by_amount = False
     while True:
-        expenses = sorted(tracker.list_expenses(), key=lambda e: e.date, reverse=True)
+        if sort_by_amount:
+            expenses = sorted(tracker.list_expenses(), key=lambda e: e.amount, reverse=True)
+        else:
+            expenses = sorted(tracker.list_expenses(), key=lambda e: e.date, reverse=True)
         rows = [
             f"{format_date(e.date, DATE_FORMAT)}  {e.category:<10}  ${e.amount:>8.2f}  {e.note}"
             for e in expenses
         ]
-        action, index = list_with_actions(stdscr, rows, "Your expenses:")
+        sort_label = "highest amount first" if sort_by_amount else "newest first"
+        action, index = list_with_actions(
+            stdscr,
+            rows,
+            f"Your expenses (sorted: {sort_label}):",
+            hint="e: edit  d: delete  s: toggle sort  esc: back",
+            extra_actions={ord("s"): "sort"},
+        )
         if action is None:
             return
+        if action == "sort":
+            sort_by_amount = not sort_by_amount
+            continue
         expense = expenses[index]
         if action == "edit":
             edit_expense_flow(stdscr, tracker, expense.id)
