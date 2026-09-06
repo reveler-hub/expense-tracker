@@ -7,14 +7,14 @@ A tiny terminal expense tracker: add expenses, edit or delete them, manage categ
 Requires Python 3.10+. The easiest way is [pipx](https://pipx.pypa.io/), which installs the `expense` command in its own isolated environment:
 
 ```bash
-pipx install git+https://github.com/<your-username>/<your-repo>.git
+pipx install git+https://github.com/reveler-hub/expense-tracker.git
 ```
 
 Or, from a local clone:
 
 ```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/reveler-hub/expense-tracker.git
+cd expense-tracker
 pipx install .
 ```
 
