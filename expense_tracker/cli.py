@@ -271,6 +271,7 @@ def run(stdscr, data_path):
     global DATA_PATH, DATE_FORMAT
     DATA_PATH = data_path
     DATE_FORMAT = detect_date_format()
+    curses.set_escdelay(25)
     curses.curs_set(0)
     tracker = load_tracker(data_path)
     try:
