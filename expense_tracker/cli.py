@@ -12,9 +12,14 @@ DATE_FORMAT = "%Y-%m-%d"  # set in main(), from the user's locale
 
 
 def detect_date_format() -> str:
-    """The day/month/year order the user's system locale prefers, always with a 4-digit year."""
+    """The day/month/year order the user's system locale prefers, always with a 4-digit year.
+
+    Assumes the process locale is already set (see main()) - curses fixes its screen
+    encoding when initscr() runs, so setting the locale any later than that risks
+    curses trying to draw locale-specific characters (e.g. a CJK D_FMT) it wasn't
+    initialized to handle.
+    """
     try:
-        locale.setlocale(locale.LC_TIME, "")
         fmt = locale.nl_langinfo(locale.D_FMT)
     except (locale.Error, AttributeError, ValueError):
         fmt = None
@@ -233,6 +238,13 @@ def render_summary(stdscr, tracker: Tracker, y=0):
         for category, amount in sorted(summary.by_category.items(), key=lambda kv: -kv[1]):
             stdscr.addstr(y, 2, f"{category:<10} ${amount:.2f}")
             y += 1
+        y += 1
+    if summary.by_month:
+        stdscr.addstr(y, 0, "By month:")
+        y += 1
+        for month, amount in sorted(summary.by_month.items(), reverse=True):
+            stdscr.addstr(y, 2, f"{month}   ${amount:.2f}")
+            y += 1
     return y + 1
 
 
@@ -281,6 +293,7 @@ def run(stdscr, data_path):
 
 
 def main():
+    locale.setlocale(locale.LC_ALL, "")  # must happen before curses.wrapper() initializes the screen
     data_path = Path.home() / ".expense-tracker" / "expenses.json"
     data_path.parent.mkdir(parents=True, exist_ok=True)
     curses.wrapper(run, data_path)
