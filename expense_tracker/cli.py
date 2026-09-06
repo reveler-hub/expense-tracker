@@ -1,10 +1,26 @@
 import curses
+import locale
 from datetime import date
+from pathlib import Path
 
 from expense_tracker.core import Tracker, UnknownCategory
+from expense_tracker.dateformat import format_date, parse_date
 from expense_tracker.storage import load_tracker, save_tracker
 
 DATA_PATH = None  # set in main()
+DATE_FORMAT = "%Y-%m-%d"  # set in main(), from the user's locale
+
+
+def detect_date_format() -> str:
+    """The day/month/year order the user's system locale prefers, always with a 4-digit year."""
+    try:
+        locale.setlocale(locale.LC_TIME, "")
+        fmt = locale.nl_langinfo(locale.D_FMT)
+    except (locale.Error, AttributeError, ValueError):
+        fmt = None
+    if not fmt:
+        return "%Y-%m-%d"
+    return fmt.replace("%y", "%Y")
 
 
 def prompt_text(stdscr, y, message, initial=""):
@@ -101,13 +117,14 @@ def parse_amount(stdscr, y, initial=""):
             stdscr.refresh()
 
 
-def parse_date(stdscr, y, initial=None):
+def prompt_date(stdscr, y, initial=None):
     default = initial or date.today()
-    text = prompt_text(stdscr, y, f"Date [YYYY-MM-DD] (enter for {default.isoformat()}): ")
+    hint = DATE_FORMAT.replace("%d", "DD").replace("%m", "MM").replace("%Y", "YYYY")
+    text = prompt_text(stdscr, y, f"Date [{hint}] (enter for {format_date(default, DATE_FORMAT)}): ")
     if not text.strip():
         return default
     try:
-        return date.fromisoformat(text.strip())
+        return parse_date(text.strip(), DATE_FORMAT)
     except ValueError:
         stdscr.addstr(y + 1, 0, "Couldn't read that date, using default.")
         stdscr.refresh()
@@ -126,7 +143,7 @@ def add_expense_flow(stdscr, tracker: Tracker):
 
     stdscr.clear()
     amount = parse_amount(stdscr, 0)
-    when = parse_date(stdscr, 2)
+    when = prompt_date(stdscr, 2)
     note = prompt_text(stdscr, 4, "Note (optional): ")
 
     tracker.add_expense(amount=amount, category=category, note=note, when=when)
@@ -136,7 +153,7 @@ def edit_expense_flow(stdscr, tracker: Tracker, expense_id: int):
     expense = tracker._find(expense_id)
     stdscr.clear()
     amount = parse_amount(stdscr, 0, initial=str(expense.amount))
-    when = parse_date(stdscr, 2, initial=expense.date)
+    when = prompt_date(stdscr, 2, initial=expense.date)
     note = prompt_text(stdscr, 4, "Note: ", initial=expense.note)
 
     categories = tracker.list_categories()
@@ -156,7 +173,7 @@ def view_edit_entries_flow(stdscr, tracker: Tracker):
     while True:
         expenses = sorted(tracker.list_expenses(), key=lambda e: e.date, reverse=True)
         rows = [
-            f"{e.date.isoformat()}  {e.category:<10}  ${e.amount:>8.2f}  {e.note}"
+            f"{format_date(e.date, DATE_FORMAT)}  {e.category:<10}  ${e.amount:>8.2f}  {e.note}"
             for e in expenses
         ]
         action, index = list_with_actions(stdscr, rows, "Your expenses:")
@@ -251,8 +268,9 @@ def main_menu(stdscr, tracker: Tracker):
 
 
 def run(stdscr, data_path):
-    global DATA_PATH
+    global DATA_PATH, DATE_FORMAT
     DATA_PATH = data_path
+    DATE_FORMAT = detect_date_format()
     curses.curs_set(0)
     tracker = load_tracker(data_path)
     try:
@@ -262,7 +280,7 @@ def run(stdscr, data_path):
 
 
 def main():
-    data_path = __import__("pathlib").Path.home() / ".expense-tracker" / "expenses.json"
+    data_path = Path.home() / ".expense-tracker" / "expenses.json"
     data_path.parent.mkdir(parents=True, exist_ok=True)
     curses.wrapper(run, data_path)
 
